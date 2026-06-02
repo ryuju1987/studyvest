@@ -2,6 +2,11 @@
 .env
 .env.*
 !.env.example
+*.key
+*.pem
+*.p12
+*.crt
+secrets.*
 
 node_modules/
 dist/
@@ -11,3 +16,5 @@ coverage/
 *.log
 *.tmp
 *.swp
+*.sqlite
+*.sqlite3

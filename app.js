@@ -631,6 +631,14 @@ function currentInstrument() {
   return instruments.find((item) => item.ticker === state.selected) || instruments[0];
 }
 
+function normalizeTickerInput(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9.-]/g, "")
+    .slice(0, 8);
+}
+
 function weightedScore(item) {
   const totalWeight = Object.values(state.weights).reduce((sum, value) => sum + value, 0) || 1;
   const score = Object.entries(state.weights).reduce((sum, [key, weight]) => {
@@ -1422,7 +1430,7 @@ function drawLegend(ctx, width, pad, palette) {
 }
 
 function addCustomTicker(ticker) {
-  const normalized = ticker.trim().toUpperCase();
+  const normalized = normalizeTickerInput(ticker);
   if (!normalized) return;
 
   const existing = instruments.find((item) => item.ticker === normalized);
@@ -1532,7 +1540,7 @@ function runCommand(rawCommand) {
     switchScreen("research");
     routed = true;
   }
-  const ticker = token.replace(/[^A-Z0-9.-]/gi, "").toUpperCase();
+  const ticker = normalizeTickerInput(token);
   if (routed) {
     setConsole(`명령 실행: ${command}`);
   }

@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>StudyVest - 투자 보조 워크벤치</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body class="terminal-mode">
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="워크벤치 탐색">
+        <div class="brand-block">
+          <div class="brand-mark" aria-hidden="true">SV</div>
+          <div>
+            <p class="eyebrow">StudyVest</p>
+            <h1>투자 공부 워크벤치</h1>
+          </div>
+        </div>
+
+        <nav class="side-nav" aria-label="주요 보기">
+          <button class="nav-item active" data-screen="markets">시장 대시보드</button>
+          <button class="nav-item" data-screen="portfolio">포트폴리오</button>
+          <button class="nav-item" data-screen="research">기업 리서치</button>
+          <button class="nav-item" data-screen="tools">API/도구</button>
+          <button class="nav-item" data-screen="ai">AI 코치</button>
+        </nav>
+
+        <section class="side-section">
+          <div class="section-heading">
+            <span>개인 규칙</span>
+            <button class="icon-button" id="resetWeights" title="가중치 초기화" aria-label="가중치 초기화">R</button>
+          </div>
+          <label class="weight-control">
+            <span>추세</span>
+            <input type="range" min="0" max="40" value="25" id="trendWeight">
+            <strong id="trendWeightLabel">25</strong>
+          </label>
+          <label class="weight-control">
+            <span>가치</span>
+            <input type="range" min="0" max="40" value="20" id="valueWeight">
+            <strong id="valueWeightLabel">20</strong>
+          </label>
+          <label class="weight-control">
+            <span>촉매</span>
+            <input type="range" min="0" max="40" value="25" id="catalystWeight">
+            <strong id="catalystWeightLabel">25</strong>
+          </label>
+          <label class="weight-control">
+            <span>리스크</span>
+            <input type="range" min="0" max="40" value="30" id="riskWeight">
+            <strong id="riskWeightLabel">30</strong>
+          </label>
+        </section>
+
+        <section class="side-section compact">
+          <p class="side-kicker">오늘의 원칙</p>
+          <p class="rule-text">확신보다 손실 한도를 먼저 정한다.</p>
+        </section>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Research mode</p>
+            <h2 id="selectedTitle">NVDA 연구 노트</h2>
+          </div>
+          <div class="top-actions">
+            <button class="terminal-toggle" id="terminalToggle" type="button">리서치 모드</button>
+            <div class="segmented" role="tablist" aria-label="분석 모드">
+              <button class="segment active" data-mode="study">학습</button>
+              <button class="segment" data-mode="observe">관찰</button>
+              <button class="segment" data-mode="entry">진입검토</button>
+            </div>
+            <form class="ticker-form" id="tickerForm">
+              <input id="tickerInput" name="ticker" autocomplete="off" maxlength="8" placeholder="Ticker">
+              <button type="submit">추가</button>
+            </form>
+          </div>
+        </header>
+
+        <section class="command-strip" aria-label="시장 명령줄">
+          <div class="global-menu" role="tablist" aria-label="터미널 메뉴">
+            <button class="global-tab active" type="button" data-screen="markets">Markets</button>
+            <button class="global-tab" type="button" data-screen="portfolio">Portfolio</button>
+            <button class="global-tab" type="button" data-screen="research">Research</button>
+            <button class="global-tab" type="button" data-screen="tools">Tools</button>
+            <button class="global-tab" type="button" data-screen="ai">AI</button>
+          </div>
+          <form class="command-box" id="commandForm">
+            <span>GO</span>
+            <input id="commandInput" autocomplete="off" placeholder="NVDA FA">
+          </form>
+          <button class="ai-action" id="aiAssist" type="button">AI</button>
+          <div class="data-state-strip" aria-label="데이터 상태">
+            <button class="data-chip ready" type="button" data-inspector="sec">SEC ready</button>
+            <button class="data-chip delayed" type="button" data-inspector="iex">IEX delayed</button>
+            <button class="data-chip locked" type="button" data-inspector="broker">Broker locked</button>
+          </div>
+        </section>
+        <div class="interaction-console" id="interactionConsole" aria-live="polite">
+          READY | 터미널 버튼, 데이터 상태, 차트, AI, Paper 티켓이 모두 현재 화면 상태를 바꿉니다.
+        </div>
+
+        <section class="screen active" data-screen-panel="markets">
+        <section class="score-strip" aria-label="핵심 상태">
+          <div class="metric-tile">
+            <span>종합 점수</span>
+            <strong id="totalScore">76</strong>
+          </div>
+          <div class="metric-tile">
+            <span>위험 등급</span>
+            <strong id="riskGrade">B</strong>
+          </div>
+          <div class="metric-tile">
+            <span>포트 비중</span>
+            <strong id="portfolioWeight">18%</strong>
+          </div>
+          <div class="metric-tile">
+            <span>다음 확인</span>
+            <strong id="nextCheck">실적</strong>
+          </div>
+        </section>
+
+        <section class="terminal-deck" aria-label="고밀도 터미널 요약">
+          <article class="terminal-panel market-pulse-panel">
+            <div class="terminal-panel-header">
+              <span>Market pulse</span>
+              <em id="pulseState">mixed live</em>
+            </div>
+            <div class="pulse-gauge">
+              <strong id="pulseScore">62</strong>
+              <span>risk</span>
+            </div>
+            <div id="marketPulseBars" class="pulse-bars"></div>
+            <div id="sectorMap" class="sector-map"></div>
+          </article>
+
+          <article class="terminal-panel quote-panel">
+            <div class="terminal-panel-header">
+              <span id="terminalSymbol">NVDA</span>
+              <em id="terminalDataState">sample delayed</em>
+            </div>
+            <div id="terminalQuoteMetrics" class="quote-metrics"></div>
+          </article>
+
+          <article class="terminal-panel order-panel">
+            <div class="terminal-panel-header">
+              <span>Order &amp; execution</span>
+              <em>paper only</em>
+            </div>
+            <div id="orderExecution" class="order-stack"></div>
+            <button class="terminal-action" id="paperTicketButton" type="button">Paper 티켓 열기</button>
+          </article>
+
+          <article class="terminal-panel matrix-panel">
+            <div class="terminal-panel-header">
+              <span>Cross asset matrix</span>
+              <em>local estimate</em>
+            </div>
+            <div id="assetMatrix" class="asset-matrix"></div>
+          </article>
+
+          <article class="terminal-panel scenario-panel">
+            <div class="terminal-panel-header">
+              <span>Scenario lab</span>
+              <em>what-if</em>
+            </div>
+            <div class="scenario-controls">
+              <label>
+                <span>Stress</span>
+                <input type="range" min="-30" max="30" value="-8" id="scenarioStress">
+              </label>
+              <label>
+                <span>Horizon</span>
+                <input type="number" min="1" max="12" value="3" id="scenarioHorizon">
+              </label>
+            </div>
+            <div id="scenarioLab" class="scenario-output"></div>
+            <button class="terminal-action" id="runScenario" type="button">시나리오 실행</button>
+          </article>
+
+          <article class="terminal-panel sec-panel">
+            <div class="terminal-panel-header">
+              <span>SEC / DART</span>
+              <em>reading drill</em>
+            </div>
+            <div id="secDrill" class="sec-drill"></div>
+            <button class="terminal-action" id="secDrillButton" type="button">공시 체크 열기</button>
+          </article>
+        </section>
+
+        <section class="strategy-grid" aria-label="API와 포트폴리오 설계">
+          <article class="panel api-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">US API stack</p>
+                <h3>미국 API 접목 후보</h3>
+              </div>
+              <span class="status-pill neutral">읽기 우선</span>
+            </div>
+            <div id="apiProviderList" class="provider-list"></div>
+          </article>
+
+          <article class="panel snap-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">SnapTerminal takeaways</p>
+                <h3>Thread 적용 분석</h3>
+              </div>
+              <span class="status-pill neutral">적용됨</span>
+            </div>
+            <div id="snapTakeaways" class="takeaway-list"></div>
+          </article>
+
+          <article class="panel prompt-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Prompt blueprint</p>
+                <h3>댓글 프롬프트 적용 항목</h3>
+              </div>
+              <span class="status-pill neutral">8개 축</span>
+            </div>
+            <div id="promptBlueprint" class="blueprint-list"></div>
+          </article>
+
+          <article class="panel portfolio-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">60 / 40 builder</p>
+                <h3>상위 10 + 저평가 우량주 모델</h3>
+              </div>
+              <span class="status-pill" id="portfolioMode">학습용</span>
+            </div>
+            <div class="builder-controls">
+              <label>
+                <span>투자 예산</span>
+                <input type="number" id="portfolioBudget" min="1000" step="1000" value="50000">
+              </label>
+              <label>
+                <span>가치 민감도</span>
+                <input type="range" id="valueTilt" min="0" max="100" value="65">
+              </label>
+              <label class="toggle-line">
+                <input type="checkbox" id="excludeOverlap" checked>
+                <span>상위 10 중복 제외</span>
+              </label>
+            </div>
+            <div class="allocation-summary">
+              <div>
+                <span>S&P 상위 10</span>
+                <strong id="megaCapBudget">$30,000</strong>
+              </div>
+              <div>
+                <span>저평가 우량주</span>
+                <strong id="qualityBudget">$20,000</strong>
+              </div>
+              <div>
+                <span>교육 점수</span>
+                <strong id="educationScore">82</strong>
+              </div>
+            </div>
+            <div class="portfolio-tables">
+              <div>
+                <h4>60% 코어</h4>
+                <div id="coreAllocation" class="allocation-list"></div>
+              </div>
+              <div>
+                <h4>40% 가치/품질</h4>
+                <div id="qualityAllocation" class="allocation-list"></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel coach-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Analysis coach</p>
+                <h3>가치분석 훈련 루프</h3>
+              </div>
+            </div>
+            <ol id="analysisCoach" class="coach-list"></ol>
+          </article>
+        </section>
+
+        <section class="dashboard-grid">
+          <article class="panel watchlist-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Watchlist</p>
+                <h3>관찰 종목</h3>
+              </div>
+              <button class="icon-button" id="sortWatchlist" title="점수순 정렬" aria-label="점수순 정렬">S</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>티커</th>
+                    <th>가격</th>
+                    <th>변동</th>
+                    <th>점수</th>
+                  </tr>
+                </thead>
+                <tbody id="watchlistBody"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel chart-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Price action</p>
+                <h3 id="chartTitle">가격 흐름</h3>
+              </div>
+              <div class="chart-control-stack">
+                <div class="chart-tools" aria-label="차트 기간">
+                  <button class="tool active" data-window="21">1M</button>
+                  <button class="tool" data-window="63">3M</button>
+                  <button class="tool" data-window="126">6M</button>
+                  <button class="tool" data-window="252">1Y</button>
+                  <button class="tool" data-window="504">2Y</button>
+                  <button class="tool" data-window="1260">5Y</button>
+                  <button class="tool" data-window="2520">10Y</button>
+                </div>
+                <div class="interval-tools" aria-label="차트 인터벌">
+                  <button class="interval-tool active" data-interval="1D">1D</button>
+                  <button class="interval-tool" data-interval="1W">1W</button>
+                  <button class="interval-tool" data-interval="1M">1M</button>
+                </div>
+              </div>
+            </div>
+            <canvas id="priceChart" width="920" height="360" aria-label="가격 차트"></canvas>
+          </article>
+
+          <article class="panel signal-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Conviction map</p>
+                <h3>근거 점수</h3>
+              </div>
+              <span class="status-pill" id="modePill">학습</span>
+            </div>
+            <div id="signalBars" class="signal-bars"></div>
+          </article>
+
+          <article class="panel valuation-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Valuation lens</p>
+                <h3>가치분석 렌즈</h3>
+              </div>
+              <span class="status-pill neutral">샘플</span>
+            </div>
+            <div id="valuationMetrics" class="valuation-grid"></div>
+            <p id="valuationTakeaway" class="valuation-takeaway"></p>
+          </article>
+
+          <article class="panel brief-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Research brief</p>
+                <h3>투자 가설</h3>
+              </div>
+              <button class="icon-button" id="copyBrief" title="브리프 복사" aria-label="브리프 복사">C</button>
+            </div>
+            <div id="briefContent" class="brief-content"></div>
+          </article>
+
+          <article class="panel risk-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Risk sizing</p>
+                <h3>손실 한도 계산</h3>
+              </div>
+              <span class="status-pill neutral">교육용</span>
+            </div>
+            <div class="risk-grid">
+              <label>
+                <span>계좌 크기</span>
+                <input type="number" id="accountSize" value="50000" min="1000" step="500">
+              </label>
+              <label>
+                <span>거래당 위험</span>
+                <input type="number" id="riskPercent" value="1" min="0.1" max="5" step="0.1">
+              </label>
+              <label>
+                <span>진입가</span>
+                <input type="number" id="entryPrice" value="1118.25" min="1" step="0.01">
+              </label>
+              <label>
+                <span>손절가</span>
+                <input type="number" id="stopPrice" value="1050" min="1" step="0.01">
+              </label>
+            </div>
+            <div class="risk-result">
+              <div>
+                <span>허용 손실</span>
+                <strong id="maxLoss">$500</strong>
+              </div>
+              <div>
+                <span>수량</span>
+                <strong id="shareCount">7</strong>
+              </div>
+              <div>
+                <span>필요 현금</span>
+                <strong id="cashNeeded">$7,828</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel flow-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Flow radar</p>
+                <h3>시장 플로우</h3>
+              </div>
+              <span class="status-pill neutral">모의</span>
+            </div>
+            <div id="flowRadar" class="flow-list"></div>
+          </article>
+
+          <article class="panel guard-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Trade guardrails</p>
+                <h3>주문/AI 안전장치</h3>
+              </div>
+              <span class="status-pill neutral">Paper 기본</span>
+            </div>
+            <div id="guardrailsList" class="guard-list"></div>
+          </article>
+
+          <article class="panel journal-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Decision journal</p>
+                <h3>판단 기록</h3>
+              </div>
+              <button class="icon-button" id="saveJournal" title="저장" aria-label="저장">W</button>
+            </div>
+            <textarea id="journalNote" rows="9" placeholder="가설, 반증 조건, 다음 확인일을 남겨두세요."></textarea>
+            <div class="journal-footer">
+              <span id="journalState">자동 불러오기 완료</span>
+              <button id="clearJournal" class="text-button">비우기</button>
+            </div>
+          </article>
+
+          <article class="panel event-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Catalyst queue</p>
+                <h3>확인 이벤트</h3>
+              </div>
+            </div>
+            <ol id="eventList" class="event-list"></ol>
+          </article>
+
+          <article class="panel learning-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Study loop</p>
+                <h3>학습 큐</h3>
+              </div>
+              <div class="mini-tabs" role="tablist" aria-label="학습 범주">
+                <button class="mini-tab active" data-topic="fundamental">재무</button>
+                <button class="mini-tab" data-topic="technical">기술</button>
+                <button class="mini-tab" data-topic="behavior">심리</button>
+              </div>
+            </div>
+            <ul id="learningList" class="learning-list"></ul>
+          </article>
+
+          <article class="panel source-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Data provenance</p>
+                <h3>데이터 출처 체크</h3>
+              </div>
+            </div>
+            <div id="sourceChecklist" class="source-list"></div>
+          </article>
+        </section>
+        </section>
+
+        <section class="screen" data-screen-panel="portfolio">
+          <section class="screen-grid portfolio-workbench" aria-label="포트폴리오 완성 화면">
+            <article class="panel hero-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Portfolio command</p>
+                  <h3>60% 상위 10 + 40% 가치/품질 완성본</h3>
+                </div>
+                <span class="status-pill neutral">Paper / Read-only</span>
+              </div>
+              <div class="portfolio-summary-grid" id="portfolioHealth"></div>
+            </article>
+
+            <article class="panel wide-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Holdings</p>
+                  <h3>보유/목표 비중</h3>
+                </div>
+                <span class="status-pill neutral">샘플 포트</span>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>티커</th>
+                      <th>슬리브</th>
+                      <th>현재</th>
+                      <th>목표</th>
+                      <th>상태</th>
+                    </tr>
+                  </thead>
+                  <tbody id="holdingRows"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Rebalance</p>
+                  <h3>리밸런싱 액션</h3>
+                </div>
+              </div>
+              <div id="rebalanceActions" class="action-list"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Broker flow</p>
+                  <h3>브로커 연결 순서</h3>
+                </div>
+              </div>
+              <ol id="brokerSteps" class="step-list"></ol>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Paper ticket</p>
+                  <h3>모의 주문 티켓</h3>
+                </div>
+                <span class="status-pill neutral">Locked live</span>
+              </div>
+              <div id="paperOrderPreview" class="ticket-box"></div>
+            </article>
+          </section>
+        </section>
+
+        <section class="screen" data-screen-panel="research">
+          <section class="screen-grid research-workbench" aria-label="기업 리서치 완성 화면">
+            <article class="panel hero-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Research cockpit</p>
+                  <h3 id="researchHeadline">기업 가치분석</h3>
+                </div>
+                <span class="status-pill neutral">교육용</span>
+              </div>
+              <div id="researchScorecard" class="scorecard-grid"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">SEC / filings</p>
+                  <h3>공시 읽기 체크리스트</h3>
+                </div>
+              </div>
+              <div id="secChecklist" class="check-list"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">News translation</p>
+                  <h3>뉴스 요약/번역</h3>
+                </div>
+                <span class="status-pill neutral">API 준비</span>
+              </div>
+              <div id="newsItems" class="news-list"></div>
+            </article>
+
+            <article class="panel wide-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Thesis lab</p>
+                  <h3>가설, 반증, 시나리오</h3>
+                </div>
+              </div>
+              <div id="thesisChecklist" class="thesis-grid"></div>
+            </article>
+          </section>
+        </section>
+
+        <section class="screen" data-screen-panel="tools">
+          <section class="screen-grid tools-workbench" aria-label="API와 배포 도구 화면">
+            <article class="panel hero-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Integration roadmap</p>
+                  <h3>API 연결 로드맵</h3>
+                </div>
+                <span class="status-pill neutral">키 미저장</span>
+              </div>
+              <div id="apiRoadmap" class="roadmap-list"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Providers</p>
+                  <h3>연결 후보 상세</h3>
+                </div>
+              </div>
+              <div id="providerCards" class="provider-list compact-list"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Security</p>
+                  <h3>API 키/로그인 보안</h3>
+                </div>
+              </div>
+              <div id="securityChecklist" class="check-list"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Deploy</p>
+                  <h3>배포 준비</h3>
+                </div>
+              </div>
+              <div id="deploymentChecklist" class="check-list"></div>
+            </article>
+          </section>
+        </section>
+
+        <section class="screen" data-screen-panel="ai">
+          <section class="screen-grid ai-workbench" aria-label="AI 분석 교육 화면">
+            <article class="panel hero-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">AI trade assistant</p>
+                  <h3>추천이 아닌 분석 코치</h3>
+                </div>
+                <span class="status-pill neutral">규칙 기반</span>
+              </div>
+              <div class="ai-generator">
+                <label>
+                  <span>코치 모드</span>
+                  <select id="aiTaskSelect">
+                    <option value="brief">리서치 브리프</option>
+                    <option value="bear">반증 질문</option>
+                    <option value="risk">리스크 점검</option>
+                    <option value="lesson">학습 과제</option>
+                  </select>
+                </label>
+                <button class="text-button" id="generateCoach" type="button">생성</button>
+              </div>
+              <textarea id="aiCoachOutput" class="coach-output" rows="10" readonly></textarea>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Prompt guard</p>
+                  <h3>AI 사용 원칙</h3>
+                </div>
+              </div>
+              <div id="modelPolicy" class="guard-list"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Training drills</p>
+                  <h3>분석 훈련 카드</h3>
+                </div>
+              </div>
+              <div id="aiDrills" class="drill-list"></div>
+            </article>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -176,6 +176,14 @@ h3 {
   gap: 12px;
 }
 
+.panel-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .section-heading {
   margin-bottom: 12px;
   color: #f4f8ff;

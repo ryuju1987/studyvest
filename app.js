@@ -389,7 +389,7 @@ const sourceChecklist = [
   ["공시", "SEC EDGAR companyfacts와 submissions를 우선 연결", "ready"],
   ["뉴스", "Alpaca News 또는 별도 뉴스 API 연결 전까지는 데이터 필요 상태 표시", "pending"],
   ["펀더멘털", "SEC 원자료를 우선 계산하고 FMP/Polygon 같은 유료 API는 보조로 둠", "pending"],
-  ["매매일지", "브라우저 localStorage 저장, JSON 내보내기 예정", "ready"],
+  ["매매일지", "서버 실행 시 git 밖 로컬 저장소에 저장하고, 정적 실행 시 localStorage를 백업으로 사용", "ready"],
   ["API 키", "프론트 저장 금지. 서버 환경변수 또는 사용자별 암호화 저장으로 설계", "pending"]
 ];
 
@@ -436,7 +436,7 @@ const newsFeed = [
 ];
 
 const apiRoadmap = [
-  ["Phase 1", "SEC EDGAR companyfacts + 수동 포트폴리오 + 로컬 저널"],
+  ["Phase 1", "로컬 server.js + SEC EDGAR companyfacts + 수동 포트폴리오 + git 밖 로컬 저널"],
   ["Phase 2", "Alpaca/Tradier read-only 가격, 뉴스, 계좌 조회"],
   ["Phase 3", "Paper Trading 주문 티켓, 체결 로그, 리스크 한도 검증"],
   ["Phase 4", "사용자가 명시적으로 켠 실거래 어댑터와 주문 전 확인 화면"]
@@ -444,13 +444,13 @@ const apiRoadmap = [
 
 const securityChecklist = [
   ["프론트 저장 금지", "API 키와 secret은 브라우저 localStorage에 저장하지 않는다."],
-  ["환경변수", "서버 배포 시 `.env`와 비밀 관리자를 통해 키를 주입한다."],
+  ["환경변수", "개인용 `.env`를 git 밖 비밀로 두고, 브라우저에는 키를 노출하지 않는다."],
   ["권한 분리", "시장 데이터, 계좌 조회, 주문 권한을 다른 토큰/스코프로 분리한다."],
   ["감사 로그", "AI 요약, 주문 티켓, 설정 변경은 사용자별 로그로 남긴다."]
 ];
 
 const deploymentChecklist = [
-  ["로컬", "정적 파일은 바로 열 수 있고, API 프록시가 붙으면 dev server로 실행"],
+  ["로컬", "`npm start`로 127.0.0.1 전용 API 프록시와 개인 데이터 저장소를 실행"],
   ["서버", "HTTPS, 세션, CORS, rate limit, User-Agent 정책을 문서화"],
   ["Docker", "프론트, API 프록시, 작업 큐를 분리할 수 있게 compose 파일 준비"],
   ["데이터 정책", "실시간/지연/API 제한/데이터 없음 상태를 UI와 문서에 같이 표시"]
@@ -515,7 +515,8 @@ const state = {
     value: 20,
     catalyst: 25,
     risk: 30
-  }
+  },
+  dataRegistry: null
 };
 
 const els = {
@@ -566,6 +567,7 @@ const els = {
   rebalanceActions: document.getElementById("rebalanceActions"),
   brokerSteps: document.getElementById("brokerSteps"),
   paperOrderPreview: document.getElementById("paperOrderPreview"),
+  savePortfolioSnapshot: document.getElementById("savePortfolioSnapshot"),
   researchHeadline: document.getElementById("researchHeadline"),
   researchScorecard: document.getElementById("researchScorecard"),
   secChecklist: document.getElementById("secChecklist"),
@@ -639,6 +641,88 @@ function normalizeTickerInput(value) {
     .slice(0, 8);
 }
 
+function hasServerApi() {
+  return window.location.protocol === "http:" || window.location.protocol === "https:";
+}
+
+function statusLabel(status) {
+  return {
+    ready: "실제",
+    configured: "설정됨",
+    api_required: "API 필요",
+    data_unavailable: "데이터 없음",
+    locked: "잠김",
+    upstream_error: "오류"
+  }[status] || status || "확인 필요";
+}
+
+function sourceDotClass(status) {
+  return status === "ready" || status === "configured" ? "" : "pending";
+}
+
+function registrySource(id) {
+  return state.dataRegistry?.sources?.find((source) => source.id === id);
+}
+
+async function fetchJson(path, options = {}) {
+  const response = await fetch(path, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+  if (!response.ok) {
+    throw new Error(`${response.status} ${response.statusText}`);
+  }
+  return response.json();
+}
+
+function updateDataChips() {
+  const sec = registrySource("sec");
+  const alpaca = registrySource("alpaca");
+  const tradier = registrySource("tradier");
+  const local = registrySource("local");
+  const secButton = document.querySelector('[data-inspector="sec"]');
+  const marketButton = document.querySelector('[data-inspector="iex"]');
+  const brokerButton = document.querySelector('[data-inspector="broker"]');
+
+  if (secButton && sec) {
+    secButton.textContent = `SEC ${statusLabel(sec.status)}`;
+  }
+
+  if (marketButton) {
+    const marketStatus = [alpaca?.status, tradier?.status].includes("configured") ? "configured" : "api_required";
+    marketButton.textContent = marketStatus === "configured" ? "Market 설정됨" : "Market API 필요";
+    marketButton.classList.toggle("ready", marketStatus === "configured");
+    marketButton.classList.toggle("delayed", marketStatus !== "configured");
+  }
+
+  if (brokerButton && local) {
+    brokerButton.textContent = "Local 저장 준비";
+  }
+}
+
+async function refreshDataRegistry(announce = false) {
+  if (!hasServerApi()) return;
+  try {
+    const item = currentInstrument();
+    state.dataRegistry = await fetchJson(`/api/registry?symbol=${encodeURIComponent(item.ticker)}`);
+    renderSourceChecklist();
+    updateDataChips();
+    renderTerminalDeck(item, weightedScore(item));
+    if (announce) {
+      const configured = state.dataRegistry.sources.filter((source) => source.status === "ready" || source.status === "configured").length;
+      setConsole(`로컬 서버 연결됨. ${configured}/${state.dataRegistry.sources.length}개 데이터 소스가 사용 가능하거나 설정됐습니다.`);
+    }
+  } catch (error) {
+    state.dataRegistry = null;
+    if (announce) {
+      setConsole(`로컬 서버 API 확인 실패: ${error.message}`);
+    }
+  }
+}
+
 function weightedScore(item) {
   const totalWeight = Object.values(state.weights).reduce((sum, value) => sum + value, 0) || 1;
   const score = Object.entries(state.weights).reduce((sum, [key, weight]) => {
@@ -695,7 +779,10 @@ function renderTerminalDeck(item, score) {
   els.pulseScore.textContent = String(pulse);
   els.pulseState.textContent = pulse >= 72 ? "risk-on" : pulse <= 52 ? "risk-off" : "mixed live";
   els.terminalSymbol.textContent = `${item.ticker} · ${item.name}`;
-  els.terminalDataState.textContent = "sample delayed";
+  const marketSource = registrySource("alpaca") || registrySource("tradier");
+  els.terminalDataState.textContent = marketSource
+    ? `${marketSource.label}: ${statusLabel(marketSource.status)}`
+    : "sample delayed";
 
   els.marketPulseBars.innerHTML = pulseSignals.map(([label, value, note]) => `
     <div class="pulse-row">
@@ -841,6 +928,19 @@ function renderFlowRadar() {
 }
 
 function renderSourceChecklist() {
+  if (state.dataRegistry?.sources?.length) {
+    els.sourceChecklist.innerHTML = state.dataRegistry.sources.map((source) => `
+      <div class="source-row">
+        <span class="source-dot ${sourceDotClass(source.status)}"></span>
+        <div>
+          <strong>${source.label} · ${statusLabel(source.status)}</strong>
+          <span>${source.detail}</span>
+        </div>
+      </div>
+    `).join("");
+    return;
+  }
+
   els.sourceChecklist.innerHTML = sourceChecklist.map(([label, body, stateName]) => `
     <div class="source-row">
       <span class="source-dot ${stateName === "ready" ? "" : "pending"}"></span>
@@ -1160,6 +1260,7 @@ function renderWatchlist() {
     row.addEventListener("click", () => {
       state.selected = row.dataset.ticker;
       renderAll();
+      refreshDataRegistry();
       setConsole(`${state.selected} 선택됨. 차트, 리스크, 가설, Paper 티켓을 갱신했습니다.`);
     });
   });
@@ -1252,14 +1353,73 @@ function renderLearning() {
 function loadJournal(ticker) {
   const saved = localStorage.getItem(`studyvest-journal-${ticker}`) || "";
   els.journalNote.value = saved;
-  els.journalState.textContent = saved ? `${ticker} 기록 불러옴` : `${ticker} 새 기록`;
+  els.journalState.textContent = saved ? `${ticker} 브라우저 백업 불러옴` : `${ticker} 새 기록`;
+
+  if (!hasServerApi()) return;
+  fetchJson(`/api/local/journal/${encodeURIComponent(ticker)}`)
+    .then((data) => {
+      if (data.note) {
+        els.journalNote.value = data.note;
+        els.journalState.textContent = `${ticker} 로컬 서버 기록 불러옴`;
+      } else {
+        els.journalState.textContent = `${ticker} 로컬 서버 새 기록`;
+      }
+    })
+    .catch(() => {
+      els.journalState.textContent = saved ? `${ticker} 브라우저 백업 불러옴` : `${ticker} 새 기록`;
+    });
 }
 
 function saveJournal() {
   const ticker = currentInstrument().ticker;
-  localStorage.setItem(`studyvest-journal-${ticker}`, els.journalNote.value.trim());
-  els.journalState.textContent = `${ticker} 기록 저장됨`;
-  setConsole(`${ticker} 판단 기록을 localStorage에 저장했습니다.`);
+  const note = els.journalNote.value.trim();
+  localStorage.setItem(`studyvest-journal-${ticker}`, note);
+
+  if (!hasServerApi()) {
+    els.journalState.textContent = `${ticker} 브라우저 백업 저장됨`;
+    setConsole(`${ticker} 판단 기록을 브라우저 localStorage에 백업했습니다.`);
+    return;
+  }
+
+  fetchJson(`/api/local/journal/${encodeURIComponent(ticker)}`, {
+    method: "PUT",
+    body: JSON.stringify({ note })
+  })
+    .then(() => {
+      els.journalState.textContent = `${ticker} 로컬 서버 저장됨`;
+      setConsole(`${ticker} 판단 기록을 git 밖 로컬 저장소에 저장했습니다.`);
+    })
+    .catch((error) => {
+      els.journalState.textContent = `${ticker} 브라우저 백업 저장됨`;
+      setConsole(`로컬 서버 저장 실패, 브라우저 백업 사용: ${error.message}`);
+    });
+}
+
+function savePortfolioSnapshot() {
+  const snapshot = {
+    selected: currentInstrument().ticker,
+    budget: Number(els.portfolioBudget.value) || 0,
+    valueTilt: Number(els.valueTilt.value) || 0,
+    excludeOverlap: els.excludeOverlap.checked,
+    holdings: portfolioHoldings,
+    generatedAt: new Date().toISOString()
+  };
+
+  if (!hasServerApi()) {
+    localStorage.setItem("studyvest-portfolio-snapshot", JSON.stringify(snapshot));
+    setConsole("포트폴리오 스냅샷을 브라우저 localStorage에 백업했습니다.");
+    return;
+  }
+
+  fetchJson("/api/local/portfolio", {
+    method: "PUT",
+    body: JSON.stringify({ portfolio: snapshot })
+  })
+    .then(() => setConsole("포트폴리오 스냅샷을 git 밖 로컬 저장소에 저장했습니다."))
+    .catch((error) => {
+      localStorage.setItem("studyvest-portfolio-snapshot", JSON.stringify(snapshot));
+      setConsole(`로컬 서버 저장 실패, 브라우저 백업 사용: ${error.message}`);
+    });
 }
 
 function calculateRisk() {
@@ -1437,6 +1597,7 @@ function addCustomTicker(ticker) {
   if (existing) {
     state.selected = normalized;
     renderAll();
+    refreshDataRegistry();
     setConsole(`${normalized} 기존 관찰 종목을 열었습니다.`);
     return;
   }
@@ -1473,6 +1634,7 @@ function addCustomTicker(ticker) {
   instruments.unshift(generated);
   state.selected = normalized;
   renderAll();
+  refreshDataRegistry();
   setConsole(`${normalized} 샘플 종목을 추가했습니다. 실제 API 연결 전까지는 데이터 필요 상태입니다.`);
 }
 
@@ -1718,6 +1880,8 @@ function setupEvents() {
     });
   });
 
+  els.savePortfolioSnapshot?.addEventListener("click", savePortfolioSnapshot);
+
   [els.portfolioBudget, els.valueTilt, els.excludeOverlap].forEach((input) => {
     input.addEventListener("input", () => {
       renderPortfolioBuilder();
@@ -1766,3 +1930,4 @@ function setupEvents() {
 
 setupEvents();
 renderAll();
+refreshDataRegistry(true);

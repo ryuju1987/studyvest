@@ -8,14 +8,28 @@ StudyVest focuses on SEC filing literacy, valuation discipline, risk sizing,
 paper-trading workflows, and AI-assisted analysis coaching. It intentionally
 avoids buy/sell recommendations and real-money automation.
 
+## Local-First 개인 모드
+
+이 repo는 OpenAI OSS 신청을 위해 public으로 유지하지만, 실제 사용은 개인 로컬 터미널을 기준으로 합니다. API 키, 브로커 토큰, 판단 기록, 포트폴리오 스냅샷은 `.env`와 `~/.studyvest-data` 같은 git 밖 로컬 저장소에 둡니다.
+
+```bash
+cp .env.example .env
+npm start
+```
+
+서버 실행 후 `http://127.0.0.1:8787`에서 열면 `/api/registry`, SEC EDGAR, FRED, Alpaca, Tradier, OpenDART, Alpha Vantage용 로컬 API 프록시가 활성화됩니다. 키가 없는 데이터는 실제 숫자로 꾸미지 않고 `API 필요` 또는 `데이터 없음`으로 표시합니다.
+
 ## 현재 버전
 
 - `index.html`: 앱 화면
 - `styles.css`: 반응형 대시보드 스타일
-- `app.js`: 샘플 종목, 점수 계산, 차트, 리스크 사이징, 로컬 매매일지 저장, 화면 전환, Paper/read-only 워크플로, 터미널 로그/상태칩 인터랙션
+- `app.js`: 샘플 종목, 점수 계산, 차트, 리스크 사이징, 로컬 매매일지 저장, 화면 전환, Paper/read-only 워크플로, 터미널 로그/상태칩 인터랙션, 서버 데이터 상태 반영
 - `CONTRIBUTING.md`: 오픈소스 기여 가이드
 - `SECURITY.md`: API/브로커 연동 전 보안 원칙
 - `LICENSE`: MIT 라이선스
+- `server.js`: 개인용 로컬 API 프록시
+- `.env.example`: API 키 이름만 담은 로컬 설정 템플릿
+- `docs/local-first.md`: 개인용 로컬-first 운영 원칙
 
 브라우저에서 `index.html`을 열면 바로 실행됩니다. Chrome에서 `file://` 탭이 늦게 갱신되면 `python3 -m http.server 8787`로 띄운 뒤 `http://127.0.0.1:8787/index.html`로 여는 방식이 더 안정적입니다. 현재 가격과 차트는 샘플 데이터이며, 모든 수치에는 실제 연결 전 상태를 명확히 드러내는 방향으로 설계했습니다.
 

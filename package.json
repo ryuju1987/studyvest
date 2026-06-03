@@ -1,0 +1,10 @@
+{
+  "name": "studyvest",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first investment research and education terminal",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check app.js && node --check server.js"
+  }
+}

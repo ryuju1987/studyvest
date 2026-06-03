@@ -18,3 +18,6 @@ coverage/
 *.swp
 *.sqlite
 *.sqlite3
+.studyvest-data/
+studyvest-data/
+*.db
